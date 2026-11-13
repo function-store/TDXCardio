@@ -3,24 +3,21 @@
 
 #![cfg_attr(all(windows, not(debug_assertions)), windows_subsystem = "windows")]
 
-mod bus;
 mod config;
 mod icon;
-mod log;
-mod notify;
-mod platform;
-mod protocol;
 mod ui;
-mod watch;
+
+use tdxcardio_core::{bus, log, protocol, watch};
 
 use serde_json::json;
 use std::path::PathBuf;
-use std::sync::atomic::AtomicU32;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 pub struct Core {
     pub config_path: PathBuf,
+    /// The machine config as last saved (the watchers get its `machine()` part).
+    pub cfg: Mutex<Arc<config::Config>>,
     /// Ports the listeners were started on (a port change needs a restart).
     pub ports: (u16, u16),
     /// Folder settings this run started with (a change needs a restart).
@@ -34,6 +31,10 @@ pub struct Core {
 }
 
 impl Core {
+    pub fn cfg(&self) -> Arc<config::Config> {
+        self.cfg.lock().unwrap().clone()
+    }
+
     /// Add paths to the known list (deduplicated by project family) and persist it.
     pub fn remember(&self, paths: impl IntoIterator<Item = String>) {
         let mut k = self.known.lock().unwrap();
@@ -62,7 +63,7 @@ impl Core {
 
     pub fn add_project(&self, entry: config::Entry) {
         self.remember([entry.path.clone()]);
-        let w = watch::spawn(entry, self.ctx.clone());
+        let w = watch::spawn(entry, self.ctx.clone(), None);
         self.watchers.lock().unwrap().push(w);
     }
 
@@ -81,7 +82,7 @@ impl Core {
                 }
                 None => {
                     self.remember([e.path.clone()]);
-                    next.push(watch::spawn(e.clone(), self.ctx.clone()))
+                    next.push(watch::spawn(e.clone(), self.ctx.clone(), None))
                 }
             }
         }
@@ -89,7 +90,8 @@ impl Core {
             self.ctx.log.line(&format!("stopped watching {} (removed from settings)", w.path));
         }
         drop(old); // dropping the sender ends each removed watcher's thread
-        *self.ctx.cfg.lock().unwrap() = Arc::new(cfg);
+        self.ctx.set_machine(cfg.machine());
+        *self.cfg.lock().unwrap() = Arc::new(cfg);
         *self.watchers.lock().unwrap() = next;
     }
 
@@ -191,10 +193,10 @@ fn main() {
     let start_hidden = cfg.start_hidden;
     let ports = (cfg.cardio_port, cfg.compat_port);
     let started_dirs = (cfg.data_dir.clone(), cfg.status_file.clone());
-    let ctx = Arc::new(watch::Ctx { cfg: Mutex::new(Arc::new(cfg)), bus, log: log.clone(), data_dir, gave_ups: Arc::new(AtomicU32::new(0)) });
+    let ctx = Arc::new(watch::Ctx::new(cfg.machine(), bus, log.clone(), data_dir));
     let known_path = ctx.data_dir.join("known_projects.json");
     let known = std::fs::read(&known_path).ok().and_then(|b| serde_json::from_slice(&b).ok()).unwrap_or_default();
-    let core = Arc::new(Core { config_path, ports, started_dirs, ctx, watchers: Mutex::new(Vec::new()), known: Mutex::new(known), known_path });
+    let core = Arc::new(Core { config_path, cfg: Mutex::new(Arc::new(cfg)), ports, started_dirs, ctx, watchers: Mutex::new(Vec::new()), known: Mutex::new(known), known_path });
     // One watcher per row, empty paths included (they stay idle), so rows and
     // watchers line up for the settings editor.
     for e in projects {

@@ -11,6 +11,12 @@ read every loop from `<file>.mode` beside it (one word):
   hold      send one `hold` for 8 s, then go silent (Cardio must wait 8 s, then call it a stall)
   tdxlu     speak TDXLauncherUtility: hello on the compat port with a cmd_port
 
+FAKE_COMPANION=tdxlu speaks TDXLauncherUtility whatever the mode file says,
+so the modes above test a TDXLU companion too. FAKE_CAPS=1 makes that
+companion a current one: it lists caps in its hello and answers quit /
+perform / watch on its cmd_port, as TDXLauncherUtility does since it learnt
+the TDXCardio verbs.
+
 Ports: CARDIO_PORT / COMPAT_PORT env vars (defaults 11998 / 11999).
 """
 
@@ -27,6 +33,10 @@ ID = ME.replace('\\', '/').lower() if os.name == 'nt' else ME
 CARDIO = int(os.environ.get('CARDIO_PORT', '11998'))
 COMPAT = int(os.environ.get('COMPAT_PORT', '11999'))
 CAPS = ['ping', 'save', 'quit', 'perform']
+TDXLU_CAPS = ['ping', 'save', 'quit', 'perform', 'watch']
+FORCE_TDXLU = os.environ.get('FAKE_COMPANION') == 'tdxlu'
+WITH_CAPS = os.environ.get('FAKE_CAPS') == '1'
+BUS = {'sock': None}
 
 
 def mode() -> str:
@@ -70,15 +80,27 @@ def tdxlu_cmd_server() -> int:
             line = c.makefile().readline()
             msg = json.loads(line)
             print('<- (cmd_port)', msg, flush=True)
-            c.sendall((json.dumps({'type': 'result', 'v': 1, 'req': msg.get('req'), 'ok': True}) + '\n').encode())
+            action = msg.get('action')
+            if action in ('quit', 'perform', 'watch') and not WITH_CAPS:
+                reply = {'type': 'result', 'v': 1, 'req': msg.get('req'), 'ok': False, 'error': f'unknown action: {action}'}
+            else:
+                reply = {'type': 'result', 'v': 1, 'req': msg.get('req'), 'ok': True}
+            c.sendall((json.dumps(reply) + '\n').encode())
             c.close()
+            if action == 'watch' and WITH_CAPS:
+                with open(ME + '.watch', 'w') as f:  # the test reads the last push here
+                    json.dump(msg, f)
+            if action == 'quit' and WITH_CAPS and BUS['sock'] is not None:
+                send(BUS['sock'], {'type': 'bye', 'v': 1, 'id': ID, 'reason': 'quit_requested'})
+                time.sleep(0.2)
+                os._exit(0)
 
     threading.Thread(target=loop, daemon=True).start()
     return srv.getsockname()[1]
 
 
 def main() -> None:
-    tdxlu = mode() == 'tdxlu'
+    tdxlu = FORCE_TDXLU or mode() == 'tdxlu'
     port = COMPAT if tdxlu else CARDIO
     cmd_port = tdxlu_cmd_server() if tdxlu else None
     sock = None
@@ -93,6 +115,7 @@ def main() -> None:
             try:
                 sock = socket.create_connection(('127.0.0.1', port), timeout=2)
                 sock.settimeout(None)
+                BUS['sock'] = sock
                 if not tdxlu:
                     threading.Thread(target=reader, args=(sock,), daemon=True).start()
             except OSError:
@@ -104,6 +127,8 @@ def main() -> None:
                 hello = {'type': 'hello', 'v': 1, 'id': ID, 'td_pid': os.getpid()}
                 hello.update({'cmd_port': cmd_port, 'utility': True, 'utility_version': 'fake'} if tdxlu
                              else {'cardio': 'fake-0.1', 'caps': CAPS, 'td_build': 'fake'})
+                if tdxlu and WITH_CAPS:
+                    hello['caps'] = TDXLU_CAPS
                 send(sock, hello)
             if m == 'hold' and not held:
                 held = True

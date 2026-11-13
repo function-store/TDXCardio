@@ -79,13 +79,20 @@ impl Incoming {
             let msg: Incoming = serde_json::from_value(value.clone()).ok()?;
             return Some((msg, value));
         }
-        let rest = line.strip_prefix("HB ")?;
+        // `HB id=<id> fps=<n>`, any case, `path=` / `project=` accepted for `id=`.
+        let head = line.split_whitespace().next()?;
+        if !head.eq_ignore_ascii_case("hb") && !head.eq_ignore_ascii_case("heartbeat") {
+            return None;
+        }
         let mut msg = Incoming { kind: "heartbeat".into(), ..Default::default() };
-        for part in rest.split_whitespace() {
-            if let Some(v) = part.strip_prefix("id=") {
-                msg.id = Some(v.to_string());
-            } else if let Some(v) = part.strip_prefix("fps=") {
-                msg.fps = v.parse().ok();
+        for part in line.split_whitespace().skip(1) {
+            let Some((k, v)) = part.split_once('=') else { continue };
+            match k.to_ascii_lowercase().as_str() {
+                "id" => msg.id = Some(v.to_string()),
+                "path" => msg.path = Some(v.to_string()),
+                "project" => msg.project = Some(v.to_string()),
+                "fps" => msg.fps = v.parse().ok(),
+                _ => {}
             }
         }
         Some((msg, serde_json::Value::Null))
@@ -112,5 +119,8 @@ mod tests {
         let (m, _) = Incoming::parse("HB id=c:/x/a.toe fps=59.9").unwrap();
         assert_eq!(m.kind, "heartbeat");
         assert_eq!(m.fps, Some(59.9));
+        let (m, _) = Incoming::parse("hb path=c:/x/a.toe").unwrap();
+        assert_eq!(m.path.as_deref(), Some("c:/x/a.toe"));
+        assert!(Incoming::parse("hello there").is_none());
     }
 }

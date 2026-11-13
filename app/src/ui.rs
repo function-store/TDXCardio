@@ -2,8 +2,9 @@
 //! threads never depend on the window being open.
 
 use crate::config::{self, Config, Entry, Rules};
-use crate::watch::Ctl;
-use crate::{notify, protocol, Core};
+use tdxcardio_core::watch::Ctl;
+use crate::Core;
+use tdxcardio_core::{notify, protocol};
 use eframe::egui::{self, Color32, RichText};
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -185,7 +186,7 @@ impl Draft {
             config::save_rules(&path, r)?;
             written.push(file_name(&config::sidecar_path(&path)));
         }
-        if self.edit != *core.ctx.cfg() {
+        if self.edit != *core.cfg() {
             config::save(&core.config_path, &self.edit)?;
             written.push(file_name(&core.config_path));
         }
@@ -207,7 +208,7 @@ fn family(path: &str) -> String {
 
 /// The settings as they run now; rules re-read from each sidecar.
 fn draft_from_live(core: &Core) -> Draft {
-    let live = (*core.ctx.cfg()).clone();
+    let live = (*core.cfg()).clone();
     let mut d = Draft::new(live.clone(), live);
     d.merge_known(core.known.lock().unwrap().clone());
     d
@@ -217,7 +218,7 @@ fn draft_from_live(core: &Core) -> Draft {
 /// saving it updates them instead of starting new ones.
 fn draft_from_disk(core: &Core) -> Result<Draft, String> {
     let mut disk = config::load(&core.config_path)?;
-    let live = core.ctx.cfg();
+    let live = core.cfg();
     let mut used = Vec::new();
     for e in &mut disk.projects {
         if let Some(l) = live.projects.iter().find(|l| l.path == e.path && !used.contains(&l.uid)) {
@@ -537,7 +538,7 @@ impl App {
             return;
         }
         let entry = Entry { path: id.to_string(), mode: "attach".into(), ..Default::default() };
-        let mut cfg = (*core.ctx.cfg()).clone();
+        let mut cfg = (*core.cfg()).clone();
         cfg.projects.push(entry.clone());
         if let Err(e) = config::save(&core.config_path, &cfg) {
             core.ctx.log.line(&format!("could not save config: {e}"));

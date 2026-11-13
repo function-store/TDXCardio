@@ -1,5 +1,6 @@
 # Rust build output
 /app/target/
+/core/target/
 /app/dist/
 
 # Python

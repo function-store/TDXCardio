@@ -1,5 +1,8 @@
 //! TCP bus: the Cardio listener (commands ride the same connection) and the
 //! TDXLU-compatible listener (commands go to the peer's `cmd_port`).
+//!
+//! An app that already owns the TDXLU port (TDX Launcher Ultra) builds a bus
+//! with [`Bus::new`] and hands it every line it reads, via [`Bus::ingest_line`].
 
 use crate::protocol::{family_key, Incoming};
 use serde_json::{json, Value};
@@ -53,10 +56,14 @@ impl Peer {
             None => "unknown",
         }
     }
+    /// Whether the companion answers `verb`. A TDXLauncherUtility that sends
+    /// no `caps` (older companions) answers only `ping` and `save` of the verbs
+    /// the watcher uses.
     pub fn can(&self, verb: &str) -> bool {
         match &self.channel {
             Some(Channel::Cardio { .. }) => self.caps.iter().any(|c| c == verb),
-            Some(Channel::Tdxlu { .. }) => matches!(verb, "ping" | "save"),
+            Some(Channel::Tdxlu { .. }) if self.caps.is_empty() => matches!(verb, "ping" | "save"),
+            Some(Channel::Tdxlu { .. }) => self.caps.iter().any(|c| c == verb),
             None => false,
         }
     }
@@ -74,16 +81,35 @@ struct State {
 pub struct Bus {
     state: Arc<Mutex<State>>,
     next: Arc<AtomicU64>,
+    created: Instant,
+}
+
+impl Default for Bus {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Bus {
+    /// A bus with no listeners: feed it with [`Bus::ingest_line`].
+    pub fn new() -> Bus {
+        Bus { state: Arc::default(), next: Arc::new(AtomicU64::new(1)), created: Instant::now() }
+    }
+
+    /// A bus serving the Cardio port and, while it is free, the compat port.
     pub fn start(cardio_port: u16, compat_port: u16, log: crate::log::Log) -> Bus {
-        let bus = Bus { state: Arc::default(), next: Arc::new(AtomicU64::new(1)) };
+        let bus = Bus::new();
         bus.spawn_listener(cardio_port, true, log.clone());
         if compat_port != 0 {
             bus.spawn_listener(compat_port, false, log);
         }
         bus
+    }
+
+    /// How long this bus has been up. Companions hello every 2 s, so until a
+    /// few seconds have passed a missing peer proves nothing.
+    pub fn age(&self) -> Duration {
+        self.created.elapsed()
     }
 
     pub fn listening(&self) -> (bool, bool) {
@@ -158,6 +184,15 @@ impl Bus {
             if matches!(&p.channel, Some(Channel::Cardio { conn: c, .. }) if *c == conn) {
                 p.channel = None;
             }
+        }
+    }
+
+    /// One line a TDXLauncherUtility sent to the app's own TDXLU-port
+    /// listener (commands go back to its `cmd_port`). Lines that are not bus
+    /// messages are ignored.
+    pub fn ingest_line(&self, line: &str) {
+        if let Some((msg, raw)) = Incoming::parse(line) {
+            self.apply(msg, raw, None);
         }
     }
 
@@ -255,10 +290,30 @@ impl Bus {
         g.peers.retain(|k, p| k != id && (pid.is_none() || p.pid != pid));
     }
 
-    /// Fire-and-forget push (the `watch` state message). Cardio peers only.
+    /// Fire-and-forget push (the `watch` state message). A Cardio peer gets
+    /// it on its connection; a TDXLauncherUtility that lists `watch` in its
+    /// caps gets it as a `watch` command on its cmd_port, off this thread.
     pub fn push(&self, peer: &Peer, body: Value) {
-        if let Some(Channel::Cardio { writer, .. }) = &peer.channel {
-            let _ = write_line(writer, &body);
+        match &peer.channel {
+            Some(Channel::Cardio { writer, .. }) => {
+                let _ = write_line(writer, &body);
+            }
+            Some(Channel::Tdxlu { cmd_port }) if peer.can("watch") => {
+                let port = *cmd_port;
+                let req = self.next.fetch_add(1, Ordering::Relaxed).to_string();
+                let mut cmd = json!({"type": "cmd", "v": 1, "id": peer.id, "action": "watch", "req": req});
+                if let (Some(c), Value::Object(b)) = (cmd.as_object_mut(), body) {
+                    for (k, v) in b {
+                        if !matches!(k.as_str(), "type" | "v" | "id") {
+                            c.insert(k, v);
+                        }
+                    }
+                }
+                thread::spawn(move || {
+                    let _ = tdxlu_exchange(port, &cmd, Duration::from_secs(3));
+                });
+            }
+            _ => {}
         }
     }
 

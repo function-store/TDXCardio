@@ -181,31 +181,23 @@ Settings page.
 ## Working alongside TDX Launcher Ultra
 
 **[TDX Launcher Ultra](https://launcher.functionstore.tools) (TDXLU)** is
-Function Store's launcher for TouchDesigner projects. It has a heartbeat watcher of its own, fed by its TD companion
-component, **TDXLauncherUtility**. TDXCardio is a standalone app, but it speaks
-the same heartbeat protocol, so the two can be used together:
+Function Store's launcher for TouchDesigner projects. Its watchdog is TDXCardio
+too: TDXLU builds on this repository's `core/` crate and shows it as its
+**TDXCardio** panel, so a project is watched the same way, with the same
+`<Name>.cardio.json` rules, whichever of the two apps watches it. Its TD
+companion is **TDXLauncherUtility** rather than the Cardio component.
 
-- A project that only has TDXLauncherUtility (with Heartbeat Active) is still
-  watched by TDXCardio, through TDXLU's port 11999. TDXCardio takes that port
-  only while TDX Launcher Ultra is not running, so the two apps never fight over
-  it. Such a project gets liveness, fps, `ping` and `save`, but not graceful
-  quit, hold or perform, which need the Cardio component.
+- A project that only has TDXLauncherUtility (with Heartbeat Active) talks on
+  TDXLU's port 11999. TDXCardio takes that port only while TDX Launcher Ultra is
+  not running, so the two apps never fight over it.
+- A current TDXLauncherUtility lists the verbs it answers (`caps`) in its hello,
+  and sends hold, release and `bye` reasons, so it gets everything the Cardio
+  component gets: graceful quit, perform mode and the watch state shown in TD.
+  An older one gets liveness, fps, `ping` and `save`; its graceful restarts fall
+  back to a kill.
 - A project with the Cardio component talks to TDXCardio on its own port
   (11998), whether or not TDX Launcher Ultra is running.
-
-Compared with TDXLU's watcher, TDXCardio adds:
-
-| | TDXLU watcher | TDXCardio |
-|---|---|---|
-| Crash detection | heartbeat timeout | **checks the process ID**: relaunch in about 1 s, not 60 s |
-| Hung TD | timeout, then kill | screenshot first, then kill |
-| Low fps or slow frames | no | optional health rule: log or restart |
-| Known long stalls (load, render) | trip the watchdog | TD sends `hold`, and TDXCardio waits |
-| Restart | kill + relaunch | **graceful** quit (optional save) when TD can still answer; exponential backoff; gives up on a crash loop |
-| Back channel into TD | separate command port per session | same connection: `ping`, `save`, `quit`, `perform`, plus the watch state shown in TD |
-| Focus / fullscreen | no | **optional**: keep focus (OS level), perform window, always on top |
-| Multiple projects | yes | yes; attaches to sessions that are already running |
-| Status for other tools | in its window | `status.json` rewritten every second |
+- Watch a given project from one app at a time.
 
 The wire protocol is documented in [docs/PROTOCOL.md](docs/PROTOCOL.md).
 
@@ -226,7 +218,8 @@ otherwise split the traffic silently.
 
 | Piece | Where | What |
 |---|---|---|
-| `app/` | Rust crate `tdxcardio` | the watchdog: egui window and tray, or `--headless` |
+| `core/` | Rust crate `tdxcardio-core` | the watchdog engine: wire protocol, project rules, bus, the per-project watcher, platform work (launch, kill, focus, screenshot), SMTP. Shared with TDX Launcher Ultra, which feeds it from its own listener (`Bus::ingest_line`) and passes its own launcher and mail transport |
+| `app/` | Rust crate `tdxcardio` | the app on top of `core/`: `cardio.json`, egui window and tray, or `--headless` |
 | `/Cardio` COMP | `TDXCardio.toe`, externalized as `Cardio.tdxn` + `Cardio/CardioExt.py`; `release/Cardio.tox` to drop into any project | the TD companion that sends heartbeats and answers commands |
 | `docs/PROTOCOL.md` | | the wire protocol (cardio v1, a superset of TDX Launcher Ultra's heartbeat bus) |
 | `app/tools/fake_td.py` | | a fake TD session for testing without TouchDesigner |
@@ -260,13 +253,24 @@ Studio C++ build tools that Rust uses anyway.
 | Port, interval, hold length | `/Cardio` custom parameters (`.tdxn`) | n/a | `hello` / `heartbeat` / `hold` |
 | Project identity | the `.toe` path (`ProjectWatchId`, shared with TDXLauncherUtility) | | `id` on every message |
 | Watch state for other tools | the app's memory | | `status.json` |
-| Wire format | `docs/PROTOCOL.md` | `CardioExt.py` | `protocol.rs`, `bus.rs` |
+| Wire format | `docs/PROTOCOL.md` | `CardioExt.py` | `core/src/protocol.rs`, `core/src/bus.rs` |
 
 ### Testing
 
 `app/tools/fake_td.py` acts as a TD session, in either the Cardio or the
 TDXLauncherUtility dialect. Its `<file>.mode` sidecar switches it between `ok`,
-`lowfps`, `hang`, `exit`, `hold` and `tdxlu`. The scenario covers every phase
+`lowfps`, `hang`, `exit`, `hold` and `tdxlu`; `FAKE_COMPANION=tdxlu` and
+`FAKE_CAPS=1` make it a current TDXLauncherUtility.
+
+`core/tests/tdxlu_path.rs` runs it end to end, through both the Cardio port and
+the path TDX Launcher Ultra uses (crash relaunch, hold, stall, rules reload,
+health restart by graceful quit and by kill, the `watch` push, Increment and
+Save). It needs `python` on PATH:
+
+```bash
+cd core && cargo test --test tdxlu_path -- --ignored --nocapture
+```
+ The scenario covers every phase
 transition, plus live reload of a project's rules file and a broken rules file
 keeping the previous rules. It ran green on 2026-11-13 (17/17), and against a
 live TouchDesigner session (watching, hold, reconnect after an extension

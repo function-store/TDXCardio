@@ -2245,18 +2245,28 @@ dependencies = [
 
 [[package]]
 name = "tdxcardio"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "chrono",
  "eframe",
- "lettre",
  "rfd",
  "serde",
  "serde_json",
- "sysinfo",
+ "tdxcardio-core",
  "tray-icon",
- "windows-sys 0.61.2",
  "winresource",
+]
+
+[[package]]
+name = "tdxcardio-core"
+version = "0.2.0"
+dependencies = [
+ "chrono",
+ "lettre",
+ "serde",
+ "serde_json",
+ "sysinfo",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
