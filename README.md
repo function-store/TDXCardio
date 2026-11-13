@@ -168,8 +168,8 @@ Settings page.
 
 ## Working alongside TDX Launcher Ultra
 
-**TDX Launcher Ultra (TDXLU)** is Function Store's launcher for TouchDesigner
-projects. It has a heartbeat watcher of its own, fed by its TD companion
+**[TDX Launcher Ultra](https://launcher.functionstore.tools) (TDXLU)** is
+Function Store's launcher for TouchDesigner projects. It has a heartbeat watcher of its own, fed by its TD companion
 component, **TDXLauncherUtility**. TDXCardio is a standalone app, but it speaks
 the same heartbeat protocol, so the two can be used together:
 
