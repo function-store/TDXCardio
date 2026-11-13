@@ -1,5 +1,6 @@
 # Rust build output
 /app/target/
+/app/dist/
 
 # Python
 __pycache__/

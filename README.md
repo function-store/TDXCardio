@@ -31,8 +31,10 @@ optional email.
 
 ## Quick start
 
-1. Build the app (see [Building](#building)) and run `tdxcardio(.exe)`. It sits
-   in the tray; closing the window hides it there.
+1. Download the app from [Releases](https://github.com/function-store/TDXCardio/releases):
+   `TDXCardio.exe` for Windows, `TDXCardio-macos.zip` for macOS (Apple Silicon
+   and Intel). Or build it yourself (see [Building](#building)). Run it; it sits
+   in the tray (menu bar on macOS), and closing the window hides it there.
 2. Drop `release/Cardio.tox` into your TouchDesigner project and save. This is
    the component that sends heartbeats (see [The TD side](#the-td-side)).
 3. In TDXCardio, open **Settings**, click **+ Add project…** and pick the
@@ -42,6 +44,16 @@ optional email.
    heartbeats arrive.
 
 The tray's **Quit** stops watching and leaves TouchDesigner running.
+
+### First run notes
+
+- **Windows**: the exe is not code-signed yet, so SmartScreen may warn. Click
+  **More info**, then **Run anyway**.
+- **macOS**: the app is not notarized yet. Unzip it, move it to Applications,
+  then right-click it and choose **Open** (once). If macOS says it is damaged,
+  run `xattr -dr com.apple.quarantine /Applications/TDXCardio.app`. Screenshots
+  need **Screen Recording** permission, and **Keep focus** needs permission to
+  control System Events; macOS asks the first time each is used.
 
 ## The TD side
 
@@ -225,7 +237,14 @@ otherwise split the traffic silently.
 cd app && cargo build --release
 ```
 
-The executable is `app/target/release/tdxcardio(.exe)`.
+The executable is `app/target/release/tdxcardio(.exe)`. On macOS,
+`bash packaging/macos/make_app.sh` (run in `app/`) builds a universal
+`TDXCardio.app` with its icon and zips it into `app/dist/`.
+
+Publishing a GitHub release runs `.github/workflows/release.yml`, which builds
+the Windows exe and the macOS app and attaches them, with `Cardio.tox`, to the
+release. It can also be run by hand (Actions > Release builds > Run workflow)
+to rebuild the files of an existing release.
 
 The icon (a heart with a banana) is drawn in code, in `app/src/icon.rs`. On
 Windows, `app/build.rs` turns it into a multi-size `.ico` and embeds it in the

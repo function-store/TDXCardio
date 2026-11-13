@@ -1,0 +1,6 @@
+*.sh text eol=lf
+*.plist text eol=lf
+*.yml text eol=lf
+*.toe binary
+*.tox binary
+*.png binary
