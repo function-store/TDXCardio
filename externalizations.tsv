@@ -1,0 +1,4 @@
+path	type	strategy	rel_file_path	timestamp	dirty	build	touch_build	node_x	node_y	node_color
+/externalizations	table	tsv	externalizations.tsv	2026-11-12 23:37:55 UTC				-200	0	0.9000,0.3000,0.4000
+/Cardio	base	tdxn	Cardio.tdxn	2026-11-13 00:18:00 UTC		2	099.2025.33070	800	460	0.7500,0.2000,0.2500
+/Cardio/CardioExt	text	py	Cardio/CardioExt.py	2026-11-13 00:18:00 UTC				0	0	0.9000,0.3000,0.4000

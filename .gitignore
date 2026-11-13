@@ -1,0 +1,31 @@
+# Rust build output
+/app/target/
+
+# Python
+__pycache__/
+*.py[cod]
+
+# TouchDesigner
+Backup/
+TDImportCache/
+CrashAutoSave*
+*.dmp
+# Increment-and-Save copies (TDXCardio.12.toe); the project is TDXCardio.toe
+*.*.toe
+.DS_Store
+
+# Embody / Envoy (auto-managed, machine-local)
+logs/
+.venv/
+.mcp.json
+.embody/*
+!.embody/project.json
+.embody_backup/
+.tdn_backup/
+/TDPyEnvManagerContext.yaml
+
+# AI agent tooling (deployed per machine by Embody/Envoy)
+/CLAUDE.md
+/AGENTS.md
+/.claude/
+briefs/

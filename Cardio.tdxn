@@ -1,0 +1,163 @@
+format: tdxn
+version: '2.2'
+build: 2
+generator: Embody/6.3.4
+td_build: 099.2025.33070
+network_path: /Cardio
+options:
+  include_dat_content: false
+  include_storage: true
+type_defaults:
+  textDAT:
+    parameters:
+      language: python
+    size: [130, 90]
+type: baseCOMP
+custom_pars:
+  Cardio:
+  - name: Active
+    style: Toggle
+    default: true
+    help: Send heartbeats to TDXCardio. Off stops them, and a watching TDXCardio will then treat this project as stalled; use Hold to pause watching instead.
+  - name: Port
+    style: Int
+    label: TDXCardio Port
+    default: 11998
+    min: 1.0
+    max: 65535.0
+    clampMin: true
+    clampMax: true
+    normMin: 11990.0
+    normMax: 12010.0
+    help: TCP port of the TDXCardio app on 127.0.0.1 (its cardio_port, 11998 by default).
+  - name: Interval
+    style: Float
+    label: Heartbeat Interval
+    default: 1
+    min: 0.25
+    max: 10.0
+    clampMin: true
+    clampMax: true
+    normMin: 0.25
+    normMax: 5.0
+    help: Seconds between heartbeats. Keep it well under the timeout_secs set in cardio.json.
+  - name: Watchid
+    style: Str
+    label: Watch ID Override
+    help: 'Leave empty: the id is this project''s .toe path, the same id TDX Launcher Ultra uses. Set it only to report as a different project.'
+  - name: Holdseconds
+    style: Float
+    label: Hold Seconds
+    startSection: true
+    default: 120
+    min: 1.0
+    max: 600.0
+    clampMin: true
+    clampMax: true
+    normMin: 10.0
+    normMax: 600.0
+    help: 'How long Hold suspends stall detection (max 600). Use before a known long stall: a big load, a save, an offline render.'
+    value: 20
+  - name: Hold
+    style: Pulse
+    help: Tell TDXCardio not to treat missing heartbeats as a stall for Hold Seconds.
+  - name: Release
+    style: Pulse
+    label: Release Hold
+    help: End a Hold early.
+  Status:
+  - name: Connected
+    style: Toggle
+    startSection: true
+    help: On while the connection to TDXCardio is open. Driven by the extension.
+    value: ~me.ext.Cardio.Outputs['Connected']
+  - name: Phase
+    style: Str
+    label: Watch Phase
+    help: 'Phase TDXCardio reports for this project: watching, grace, held, unhealthy... "not watched" when TDXCardio is not running or does not watch this project.'
+    value: ~me.ext.Cardio.Outputs['Phase']
+  - name: Restarts
+    style: Int
+    help: How many times TDXCardio has restarted this project since it started watching.
+    value: ~me.ext.Cardio.Outputs['Restarts']
+  - name: Status
+    style: Str
+    help: Last heartbeat result or error.
+    value: ~me.ext.Cardio.Outputs['Status']
+  - name: Version
+    style: Str
+    default: 0.1.0
+    help: Cardio companion version.
+parameters:
+  parentshortcut: Cardio
+sequences:
+  ext:
+  - object: op('./CardioExt').module.CardioExt(me)
+    name: Cardio
+    promote: true
+color: [0.75, 0.2, 0.25]
+tags:
+- tdxn
+operators:
+- name: parexec
+  type: parameterexecuteDAT
+  parameters:
+    fromop: =parent()
+    op: ..
+    pars: '*'
+    builtin: false
+  position: [1200, 0]
+  size: [130, 90]
+  color: [0.67, 0.67, 0.67]
+  dat_content: "# One dispatcher: handlers are _on<Par>ValueChange / _on<Par>Pulse on the extension.\n\ndef onValueChange(par: Par, prev) -> None:\n\tparent.Cardio.ext.Cardio.dispatchPar(par, prev)\n\ndef onPulse(par: Par) -> None:\n\tparent.Cardio.ext.Cardio.dispatchPar(par, pulse=True)\n"
+  dat_content_format: text
+- name: CardioExt
+  type: textDAT
+  parameters:
+    file: Cardio/CardioExt.py
+    syncfile: true
+  color: [0.9, 0.3, 0.4]
+  tags:
+  - py
+- name: exec_frame
+  type: executeDAT
+  parameters:
+    fromop: =parent()
+    exit: true
+    frameend: true
+  position: [800, 0]
+  size: [130, 90]
+  color: [0.67, 0.67, 0.67]
+  dat_content: "# Main-thread pulse: a hung main thread stops heartbeats, which is the point.\n\ndef onFrameEnd(frame: int) -> None:\n\tparent.Cardio.ext.Cardio.onFrame()\n\ndef onExit() -> None:\n\tparent.Cardio.ext.Cardio.onProjectExit()\n"
+  dat_content_format: text
+- name: tcpip_cardio
+  type: tcpipDAT
+  parameters:
+    address: 127.0.0.1
+    port: =parent.Cardio.par.Port
+    callbacks: tcpip_callbacks
+    fromop: =parent()
+    maxlines: 20
+  position: [400, 0]
+  size: [130, 90]
+  color: [0.67, 0.67, 0.67]
+  dat_read_only: true
+- name: perform_stats
+  type: performCHOP
+  parameters:
+    msec: true
+    droppedframes: true
+    gpumemused: true
+    autoexportroot: =parent()
+  position: [1600, 0]
+  size: [130, 90]
+  color: [0.67, 0.67, 0.67]
+- name: tcpip_callbacks
+  type: textDAT
+  flags:
+  - viewer
+  position: [400, -120]
+  color: [0.67, 0.67, 0.67]
+  dock: tcpip_cardio
+  dat_content: "# TCP/IP DAT callbacks: lines from TDXCardio go to the Cardio extension.\n\ndef onConnect(dat: tcpipDAT, peer: Peer) -> None:\n\tparent.Cardio.ext.Cardio.onConnected()\n\ndef onReceive(dat: tcpipDAT, rowIndex: int, message: str, byteData: bytes, peer: Peer) -> None:\n\tparent.Cardio.ext.Cardio.onLine(message)\n\ndef onClose(dat: tcpipDAT, peer: Peer) -> None:\n\tparent.Cardio.ext.Cardio.onDisconnected()\n"
+  dat_content_format: text
