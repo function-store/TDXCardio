@@ -205,6 +205,11 @@ support request.
 - Function Store: https://functionstore.xyz/link-in-bio
 - Support on Patreon: https://patreon.com/function_store
 
+## Acknowledgements
+
+TDXCardio was inspired by [Stalker](https://github.com/interactiveimmersivehq/Stalker/)
+by The Interactive & Immersive HQ, a TouchDesigner watchdog.
+
 ## License
 
 MIT, see [LICENSE](LICENSE).
