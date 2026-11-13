@@ -204,3 +204,7 @@ support request.
 - Source code and issues: https://github.com/function-store/TDXCardio
 - Function Store: https://functionstore.xyz/link-in-bio
 - Support on Patreon: https://patreon.com/function_store
+
+## License
+
+MIT, see [LICENSE](LICENSE).
