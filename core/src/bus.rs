@@ -106,6 +106,13 @@ impl Bus {
         bus
     }
 
+    /// Also serve the Cardio port on a bus built with [`Bus::new`], so an app
+    /// that owns the TDXLU port (TDX Launcher Ultra) hears Cardio COMPs too.
+    /// Waits for the port while another app (the TDXCardio app) holds it.
+    pub fn listen_cardio(&self, port: u16, log: crate::log::Log) {
+        self.spawn_listener(port, true, log);
+    }
+
     /// How long this bus has been up. Companions hello every 2 s, so until a
     /// few seconds have passed a missing peer proves nothing.
     pub fn age(&self) -> Duration {

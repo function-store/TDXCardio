@@ -184,8 +184,9 @@ Settings page.
 Function Store's launcher for TouchDesigner projects. Its watchdog is TDXCardio
 too: TDXLU builds on this repository's `core/` crate and shows it as its
 **TDXCardio** panel, so a project is watched the same way, with the same
-`<Name>.cardio.json` rules, whichever of the two apps watches it. Its TD
-companion is **TDXLauncherUtility** rather than the Cardio component.
+`<Name>.cardio.json` rules, whichever of the two apps watches it. TDXLU
+hears both TD components: its own **TDXLauncherUtility** and the Cardio
+component.
 
 - A project that only has TDXLauncherUtility (with Heartbeat Active) talks on
   TDXLU's port 11999. TDXCardio takes that port only while TDX Launcher Ultra is
@@ -195,8 +196,10 @@ companion is **TDXLauncherUtility** rather than the Cardio component.
   component gets: graceful quit, perform mode and the watch state shown in TD.
   An older one gets liveness, fps, `ping` and `save`; its graceful restarts fall
   back to a kill.
-- A project with the Cardio component talks to TDXCardio on its own port
-  (11998), whether or not TDX Launcher Ultra is running.
+- A project with the Cardio component talks on port 11998. Whichever app
+  starts first holds that port and hears every Cardio component; the other
+  waits for it, retrying every 10 s. TDX Launcher Ultra 0.25 and later listen
+  there; older versions do not.
 - Watch a given project from one app at a time.
 
 The wire protocol is documented in [docs/PROTOCOL.md](docs/PROTOCOL.md).
@@ -206,7 +209,7 @@ The wire protocol is documented in [docs/PROTOCOL.md](docs/PROTOCOL.md).
 | Port | Owner | Notes |
 |---|---|---|
 | 11997 | TDX Launcher Ultra's control server | not used by TDXCardio |
-| **11998** | TDXCardio | the Cardio component connects here |
+| **11998** | TDXCardio, or TDX Launcher Ultra when it started first | the Cardio component connects here |
 | 11999 | TDX Launcher Ultra's heartbeat bus | TDXCardio's compatibility port: bound only when nothing else serves it, retried every 10 s |
 | 12000-12099 | TDXLauncherUtility command ports | used only to send commands to TDXLauncherUtility-only projects |
 
@@ -218,7 +221,7 @@ otherwise split the traffic silently.
 
 | Piece | Where | What |
 |---|---|---|
-| `core/` | Rust crate `tdxcardio-core` | the watchdog engine: wire protocol, project rules, bus, the per-project watcher, platform work (launch, kill, focus, screenshot), SMTP. Shared with TDX Launcher Ultra, which feeds it from its own listener (`Bus::ingest_line`) and passes its own launcher and mail transport |
+| `core/` | Rust crate `tdxcardio-core` | the watchdog engine: wire protocol, project rules, bus, the per-project watcher, platform work (launch, kill, focus, screenshot), SMTP. Shared with TDX Launcher Ultra, which feeds it from its own listener (`Bus::ingest_line`), serves the Cardio port with `Bus::listen_cardio` and passes its own launcher and mail transport |
 | `app/` | Rust crate `tdxcardio` | the app on top of `core/`: `cardio.json`, egui window and tray, or `--headless` |
 | `/Cardio` COMP | `TDXCardio.toe`, externalized as `Cardio.tdxn` + `Cardio/CardioExt.py`; `release/Cardio.tox` to drop into any project | the TD companion that sends heartbeats and answers commands |
 | `docs/PROTOCOL.md` | | the wire protocol (cardio v1, a superset of TDX Launcher Ultra's heartbeat bus) |

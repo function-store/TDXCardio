@@ -249,3 +249,38 @@ fn cardio_companion_end_to_end() {
     d.kill();
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+/// TDXLU's own shape: one bus fed by its TDXLU-port listener AND serving the
+/// Cardio port (`listen_cardio`). A TDXLauncherUtility project and a Cardio
+/// COMP project are watched side by side, and one crashing leaves the other be.
+#[test]
+#[ignore = "spawns python fake TouchDesigner sessions; run with --ignored"]
+fn both_companions_on_one_bus() {
+    let dir = std::env::temp_dir().join(format!("tdxcardio-both-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let log = Log::new(&dir);
+    let bus = Bus::new();
+    let compat = tdxlu_listener(bus.clone());
+    let cardio_port = TcpListener::bind("127.0.0.1:0").unwrap().local_addr().unwrap().port();
+    bus.listen_cardio(cardio_port, log.clone());
+    let t0 = Instant::now();
+    while !bus.listening().0 {
+        assert!(t0.elapsed() < Duration::from_secs(5), "cardio port never bound");
+        thread::sleep(Duration::from_millis(50));
+    }
+    let ctx = Arc::new(Ctx::new(Machine::default(), bus, log, dir.clone()));
+    let e = show(&dir, "Echo", &ctx, compat, true, quick_rules());
+    let f = show_with(&dir, "Foxtrot", &ctx, vec![("CARDIO_PORT", cardio_port.to_string())], quick_rules());
+    assert_eq!(e.wait("utility watching", 30, |s| s.phase == "watching").companion, "tdxlu");
+    assert_eq!(f.wait("cardio watching", 30, |s| s.phase == "watching").companion, "cardio");
+    f.mode("exit");
+    let s = f.wait("cardio restart after exit", 10, |s| s.restarts_total == 1);
+    assert_eq!(s.last_restart_reason.as_deref(), Some("exited"));
+    f.mode("ok");
+    f.wait("cardio watching again", 30, |s| s.phase == "watching");
+    let s = e.status();
+    assert_eq!((s.phase.as_str(), s.restarts_total), ("watching", 0), "utility project untouched");
+    e.kill();
+    f.kill();
+    let _ = std::fs::remove_dir_all(&dir);
+}

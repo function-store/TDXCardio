@@ -71,7 +71,10 @@ connection, like the Cardio COMP.
 
 An app that owns the TDXLU port itself (TDX Launcher Ultra) feeds each line it
 reads to the same bus code (`tdxcardio-core`, `Bus::ingest_line`), so the
-rules above hold there unchanged.
+rules above hold there unchanged. It serves the Cardio port too
+(`Bus::listen_cardio`), so a project with only the Cardio COMP is watched by
+it the same way. One app holds each port: whichever starts first keeps it, and
+the other waits, retrying every 10 s.
 
 ## Cardio's state machine (per watched project)
 
