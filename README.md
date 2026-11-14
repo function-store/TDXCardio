@@ -198,7 +198,7 @@ component.
   back to a kill.
 - A project with the Cardio component talks on port 11998. Whichever app
   starts first holds that port and hears every Cardio component; the other
-  waits for it, retrying every 10 s. TDX Launcher Ultra 0.25 and later listen
+  waits for it, retrying every 10 s. TDX Launcher Ultra releases after 0.24.0 listen
   there; older versions do not.
 - Watch a given project from one app at a time.
 
