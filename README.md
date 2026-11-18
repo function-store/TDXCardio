@@ -22,7 +22,8 @@ optional email.
   optionally save) before anything is killed. Restarts back off, and a crash
   loop gives up and alerts you.
 - **Window control** (optional): keep TD's window focused, open its perform
-  window, keep it on top. All off by default.
+  window (and, by default, reopen it within 5 s if someone leaves it), keep it
+  on top. Focus and perform mode are off by default.
 - **Evidence and alerts**: screenshots, daily logs, email on restart or give-up.
 - **Status for other tools**: `status.json`, rewritten every second.
 - **Several projects at once**, each with its own rules.
@@ -152,7 +153,7 @@ it is never overwritten.
   "relaunch_on_clean_exit": false,
   "graceful": { "enabled": true, "save": false, "timeout_secs": 10 },
   "health":   { "enabled": false, "min_fps": 20, "max_cook_ms": 0, "bad_secs": 30, "action": "log" },
-  "window":   { "keep_focus": false, "focus_interval_secs": 5, "perform_mode": false, "topmost": false },
+  "window":   { "keep_focus": false, "focus_interval_secs": 5, "perform_mode": false, "keep_perform": true, "topmost": false },
   "evidence": { "screenshot": true, "email_on_restart": false, "email_on_gave_up": true }
 }
 ```

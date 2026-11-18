@@ -229,12 +229,14 @@ pub struct Window {
     pub focus_interval_secs: u64,
     /// Ask the Cardio COMP to enter perform mode (fullscreen per the perform Window COMP).
     pub perform_mode: bool,
+    /// With perform_mode: ask again whenever a heartbeat reports it was left. On by default.
+    pub keep_perform: bool,
     /// With perform_mode: set the perform window Always On Top.
     pub topmost: bool,
 }
 impl Default for Window {
     fn default() -> Self {
-        Self { keep_focus: false, focus_interval_secs: 5, perform_mode: false, topmost: false }
+        Self { keep_focus: false, focus_interval_secs: 5, perform_mode: false, keep_perform: true, topmost: false }
     }
 }
 

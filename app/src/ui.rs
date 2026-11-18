@@ -1045,6 +1045,9 @@ fn rules_section(ui: &mut egui::Ui, d: &mut Draft, uid: u64, path: &str) {
         ui.checkbox(&mut r.window.perform_mode, "");
         ui.end_row();
         let on = r.window.perform_mode;
+        label(ui, "Keep perform mode", "With perform mode: open the perform window again within 5 s when someone leaves it.");
+        ui.add_enabled(on, egui::Checkbox::without_text(&mut r.window.keep_perform));
+        ui.end_row();
         label(ui, "Always on top", "With perform mode: keep the perform window above other windows.");
         ui.add_enabled(on, egui::Checkbox::without_text(&mut r.window.topmost));
         ui.end_row();

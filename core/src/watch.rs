@@ -18,6 +18,10 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 const TICK: Duration = Duration::from_millis(250);
 
+/// With perform mode on, a heartbeat that reports it off (someone left it)
+/// gets it asked for again, at most this often.
+const PERFORM_RETRY: Duration = Duration::from_secs(5);
+
 /// A launch-mode project started within this long of the bus coming up waits
 /// for a hello first: the show may already be running (app restarted while
 /// TD kept going), and launching would open it twice. Hellos come every 2 s.
@@ -235,6 +239,9 @@ struct Run {
     bad_logged: bool,
     last_focus: Instant,
     perform_sent_for: Option<u32>,
+    perform_asked: Instant,
+    /// A re-request failed; further failures are not logged until one succeeds.
+    perform_retry_failing: bool,
     pushed_phase: Option<(&'static str, u32)>,
     pushed_at: Instant,
     last_reason: Option<String>,
@@ -264,6 +271,8 @@ impl Run {
             bad_logged: false,
             last_focus: Instant::now(),
             perform_sent_for: None,
+            perform_asked: Instant::now(),
+            perform_retry_failing: false,
             pushed_phase: None,
             pushed_at: Instant::now(),
             rules_mtime: rules_mtime(&p.path),
@@ -547,10 +556,18 @@ impl Run {
         if self.check_health(&peer) {
             return;
         }
-        if self.p.window.perform_mode && self.perform_sent_for != peer.pid && peer.can("perform") {
+        let first = self.perform_sent_for != peer.pid;
+        let left = self.p.window.keep_perform && peer.beat.perform == Some(false) && self.perform_asked.elapsed() >= PERFORM_RETRY;
+        if self.p.window.perform_mode && (first || left) && peer.can("perform") {
             self.perform_sent_for = peer.pid;
+            self.perform_asked = Instant::now();
             let r = self.ctx.bus.command(&peer, "perform", json!({"on": true, "topmost": self.p.window.topmost}), Duration::from_secs(5));
-            self.log(&format!("perform mode requested: {}", r.map(|_| "ok".to_string()).unwrap_or_else(|e| e)));
+            let failed = r.is_err();
+            if first || !failed || !self.perform_retry_failing {
+                let what = if first { "perform mode requested" } else { "perform mode was off; requested again" };
+                self.log(&format!("{what}: {}", r.map(|_| "ok".to_string()).unwrap_or_else(|e| e)));
+            }
+            self.perform_retry_failing = !first && failed;
         }
         if self.p.window.keep_focus && self.last_focus.elapsed() >= Duration::from_secs(self.p.window.focus_interval_secs.max(1)) {
             self.last_focus = Instant::now();
