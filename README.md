@@ -293,7 +293,13 @@ support request.
 ## Acknowledgements
 
 TDXCardio was inspired by [Stalker](https://github.com/interactiveimmersivehq/Stalker/)
-by The Interactive & Immersive HQ, a TouchDesigner watchdog.
+by The Interactive & Immersive HQ, a TouchDesigner watchdog. Stalker has not
+been updated since 2017, and its repository publishes only builds, not source
+code, so TDXCardio is a new implementation, not a fork.
+
+Parts of the watchdog code are adapted from
+[TDX Launcher Ultra](https://launcher.functionstore.tools)'s watch, also by
+Function Store.
 
 ## License
 
