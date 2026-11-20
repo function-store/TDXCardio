@@ -11,7 +11,8 @@ Execute DAT on the main thread, so a hung main thread stops them, which is
 exactly what the watchdog must see.
 
 TDXCardio: https://github.com/function-store/TDXCardio
-MIT License, Copyright (c) 2026 Function Store (full text: LICENSE in the repo)
+MIT License, Copyright (c) 2026 Function Store (full text: the "License"
+annotation in the Cardio COMP, and LICENSE in the repo)
 """
 
 from __future__ import annotations
@@ -23,7 +24,6 @@ from typing import Any, Optional
 
 CARDIO_VERSION = '0.1.1'
 _REPO_URL = 'https://github.com/function-store/TDXCardio'
-_LICENSE = 'MIT License, Copyright (c) 2026 Function Store'
 _HELLO_SECS = 2.0
 _CAPS = ['ping', 'save', 'quit', 'perform']
 
@@ -143,13 +143,11 @@ class CardioExt:
 		repo.startSection = True
 		_ensurePar(c, ab, 'Openrepository', 'Pulse', 'Open Repository',
 			'Open the TDXCardio repository (README, setup, protocol) in the web browser.')
-		lic = _ensurePar(c, ab, 'License', 'Str', 'License',
-			'Cardio and TDXCardio are released under the MIT License; the full text is LICENSE in the repository.')
-		# code-owned facts, not user values: rewritten on every init, read-only
-		for p, value in ((repo, _REPO_URL), (lic, _LICENSE)):
-			p.val = value
-			p.default = value
-			p.readOnly = True
+		# code-owned fact, not a user value: rewritten on every init, read-only.
+		# The license itself is the "License" annotation inside this COMP.
+		repo.val = _REPO_URL
+		repo.default = _REPO_URL
+		repo.readOnly = True
 
 	def _onOpenrepositoryPulse(self, par: Par) -> None:
 		ui.viewFile(_REPO_URL)

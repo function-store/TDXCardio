@@ -64,8 +64,8 @@ The tray's **Quit** stops watching and leaves TouchDesigner running.
   and Hold / Hold Seconds / Release.
 - **Status page:** Connected, Watch Phase and Restarts. TDXCardio fills these in,
   so the project can see that it is being watched.
-- **About page:** the repository link, an Open Repository button and the license
-  (MIT).
+- **About page:** the repository link and an Open Repository button. The license
+  (MIT) is the License annotation inside the COMP.
 
 Each heartbeat carries fps, frame cook time, dropped frames and perform mode.
 TDXCardio can send commands back over the same connection: `ping`, `save`,

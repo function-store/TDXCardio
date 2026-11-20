@@ -1,6 +1,6 @@
 format: tdxn
 version: '2.2'
-build: 2
+build: 3
 generator: Embody/6.3.4
 td_build: 099.2025.33070
 network_path: /Cardio
@@ -14,6 +14,32 @@ type_defaults:
     size: [130, 90]
 type: baseCOMP
 custom_pars:
+  About:
+  - name: Build
+    style: Int
+    label: Build Number
+    readOnly: true
+    value: 3
+  - name: Date
+    style: Str
+    label: Build Date
+    readOnly: true
+    value: 2026-11-20 09:28:37 UTC
+  - name: Touchbuild
+    style: Str
+    label: Touch Build
+    readOnly: true
+    value: '2025.33070'
+  - name: Repository
+    style: Str
+    startSection: true
+    default: https://github.com/function-store/TDXCardio
+    readOnly: true
+    help: Source, documentation and releases of TDXCardio and this companion.
+  - name: Openrepository
+    style: Pulse
+    label: Open Repository
+    help: Open the TDXCardio repository (README, setup, protocol) in the web browser.
   Cardio:
   - name: Active
     style: Toggle
@@ -86,7 +112,7 @@ custom_pars:
     value: ~me.ext.Cardio.Outputs['Status']
   - name: Version
     style: Str
-    default: 0.1.0
+    default: 0.1.1
     help: Cardio companion version.
 parameters:
   parentshortcut: Cardio
@@ -161,3 +187,35 @@ operators:
   dock: tcpip_cardio
   dat_content: "# TCP/IP DAT callbacks: lines from TDXCardio go to the Cardio extension.\n\ndef onConnect(dat: tcpipDAT, peer: Peer) -> None:\n\tparent.Cardio.ext.Cardio.onConnected()\n\ndef onReceive(dat: tcpipDAT, rowIndex: int, message: str, byteData: bytes, peer: Peer) -> None:\n\tparent.Cardio.ext.Cardio.onLine(message)\n\ndef onClose(dat: tcpipDAT, peer: Peer) -> None:\n\tparent.Cardio.ext.Cardio.onDisconnected()\n"
   dat_content_format: text
+annotations:
+- name: annotate1
+  mode: annotate
+  title: License
+  text: |-
+    MIT License
+
+    Copyright (c) 2026 Function Store
+
+    Permission is hereby granted, free of charge, to any person obtaining a copy
+    of this software and associated documentation files (the "Software"), to deal
+    in the Software without restriction, including without limitation the rights
+    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+    copies of the Software, and to permit persons to whom the Software is
+    furnished to do so, subject to the following conditions:
+
+    The above copyright notice and this permission notice shall be included in all
+    copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+    SOFTWARE.
+
+    https://github.com/function-store/TDXCardio
+  position: [0, -1220]
+  size: [1730, 700]
+  color: [0.75, 0.2, 0.25]
+  opacity: 0.5

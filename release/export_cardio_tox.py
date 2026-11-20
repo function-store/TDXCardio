@@ -26,7 +26,7 @@ OUT = project.folder + '/release/Cardio.tox'
 OPS = ['CardioExt', 'exec_frame', 'parexec', 'perform_stats', 'tcpip_callbacks', 'tcpip_cardio']
 USER_PARS = ['Active', 'Port', 'Interval', 'Watchid', 'Holdseconds']
 ALL_PARS = USER_PARS + ['Hold', 'Release', 'Connected', 'Phase', 'Restarts', 'Status', 'Version',
-                        'Repository', 'Openrepository', 'License']
+                        'Repository', 'Openrepository']
 
 
 def _log(msg):
@@ -51,6 +51,10 @@ def _problems(c):
 	missing = [n for n in ALL_PARS if n not in pars]
 	if missing:
 		found.append('custom pars missing: %s' % missing)
+	notes = [a for a in c.findChildren(type=annotateCOMP, depth=1, includeUtility=True)
+	         if 'MIT License' in str(a.par.Bodytext.eval())]
+	if not notes:
+		found.append('no License annotation with the MIT text')
 	return found
 
 
@@ -71,6 +75,8 @@ def export():
 			if p.val != p.default:
 				_log('%s %s -> default %s' % (name, p.val, p.default))
 				p.val = p.default
+		# Embody's About page comes first in the dev toe; users should land on Cardio
+		c.sortCustomPages('Cardio', 'Status', 'About')
 		found = _problems(c)
 		if found:
 			os.remove(OUT)
