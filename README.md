@@ -234,6 +234,19 @@ otherwise split the traffic silently.
 cd app && cargo build --release
 ```
 
+`release/Cardio.tox` is built from source by `release/build_cardio_tox.py`,
+never saved by hand from the dev project (that once shipped Embody instead of
+Cardio). Run it in the oldest TouchDesigner build it must load in (newer builds
+open older toxes), in any project, from the textport:
+
+```python
+CARDIO_REPO = 'C:/path/to/TDXCardio'
+exec(open(CARDIO_REPO + '/release/build_cardio_tox.py', encoding='utf-8').read())
+```
+
+It checks the result (no Embody, no file links, the six operators, every custom
+parameter) and writes nothing when a check fails.
+
 The executable is `app/target/release/tdxcardio(.exe)`. On macOS,
 `bash packaging/macos/make_app.sh` (run in `app/`) builds a universal
 `TDXCardio.app` with its icon and zips it into `app/dist/`.
