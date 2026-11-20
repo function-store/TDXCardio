@@ -234,18 +234,19 @@ otherwise split the traffic silently.
 cd app && cargo build --release
 ```
 
-`release/Cardio.tox` is built from source by `release/build_cardio_tox.py`,
-never saved by hand from the dev project (that once shipped Embody instead of
-Cardio). Run it in the oldest TouchDesigner build it must load in (newer builds
-open older toxes), in any project, from the textport:
+`release/Cardio.tox` is exported from `/Cardio` in `TDXCardio.toe` by
+`release/export_cardio_tox.py`, from the toe's textport:
 
 ```python
-CARDIO_REPO = 'C:/path/to/TDXCardio'
-exec(open(CARDIO_REPO + '/release/build_cardio_tox.py', encoding='utf-8').read())
+exec(open(project.folder + '/release/export_cardio_tox.py', encoding='utf-8').read())
 ```
 
-It checks the result (no Embody, no file links, the six operators, every custom
-parameter) and writes nothing when a check fails.
+Do not call `op.Embody.ExportPortableTox()` by hand: without `target=` it exports
+the Embody COMP, which is how Cardio.tox once shipped Embody instead of Cardio.
+The script passes `target=/Cardio`, resets the user parameters to their defaults
+in the shipped copy, checks it (named Cardio, its six operators, no Embody, no
+file links, every custom parameter) and deletes the file when a check fails.
+The toe itself is not changed.
 
 The executable is `app/target/release/tdxcardio(.exe)`. On macOS,
 `bash packaging/macos/make_app.sh` (run in `app/`) builds a universal
