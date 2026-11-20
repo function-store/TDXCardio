@@ -25,7 +25,8 @@ import os
 OUT = project.folder + '/release/Cardio.tox'
 OPS = ['CardioExt', 'exec_frame', 'parexec', 'perform_stats', 'tcpip_callbacks', 'tcpip_cardio']
 USER_PARS = ['Active', 'Port', 'Interval', 'Watchid', 'Holdseconds']
-ALL_PARS = USER_PARS + ['Hold', 'Release', 'Connected', 'Phase', 'Restarts', 'Status', 'Version']
+ALL_PARS = USER_PARS + ['Hold', 'Release', 'Connected', 'Phase', 'Restarts', 'Status', 'Version',
+                        'Repository', 'Openrepository', 'License']
 
 
 def _log(msg):
